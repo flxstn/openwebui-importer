@@ -25,6 +25,38 @@ MODEL_NAME = "OpenAI: GPT-5"
 SUBDIR = "chatgpt"
 
 
+def extract_project_name(item: dict) -> str:
+    candidates = [
+        item.get("project_name"),
+        item.get("workspace_name"),
+        item.get("project"),
+        item.get("workspace"),
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate
+        if isinstance(candidate, dict):
+            name = candidate.get("name") or candidate.get("title")
+            if isinstance(name, str) and name.strip():
+                return name
+    metadata = item.get("metadata")
+    if isinstance(metadata, dict):
+        meta_name = metadata.get("project_name") or metadata.get("workspace_name")
+        if isinstance(meta_name, str) and meta_name.strip():
+            return meta_name
+    return ""
+
+
+def sanitize_folder_name(name: Any) -> str:
+    if not isinstance(name, str):
+        return FOLDER_FALLBACK
+    cleaned = sanitize_text(name)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return FOLDER_FALLBACK
+    return cleaned[:80]
+
+
 def extract_last_sentence(text: Any) -> str:
     """Return the last sentence of ``text`` if it is a string."""
     if not isinstance(text, str):
@@ -238,35 +270,3 @@ def run_cli() -> None:
 
 if __name__ == "__main__":
     run_cli()
-
-
-def extract_project_name(item: dict) -> str:
-    candidates = [
-        item.get("project_name"),
-        item.get("workspace_name"),
-        item.get("project"),
-        item.get("workspace"),
-    ]
-    for candidate in candidates:
-        if isinstance(candidate, str) and candidate.strip():
-            return candidate
-        if isinstance(candidate, dict):
-            name = candidate.get("name") or candidate.get("title")
-            if isinstance(name, str) and name.strip():
-                return name
-    metadata = item.get("metadata")
-    if isinstance(metadata, dict):
-        meta_name = metadata.get("project_name") or metadata.get("workspace_name")
-        if isinstance(meta_name, str) and meta_name.strip():
-            return meta_name
-    return ""
-
-
-def sanitize_folder_name(name: Any) -> str:
-    if not isinstance(name, str):
-        return FOLDER_FALLBACK
-    cleaned = sanitize_text(name)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    if not cleaned:
-        return FOLDER_FALLBACK
-    return cleaned[:80]
