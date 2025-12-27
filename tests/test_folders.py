@@ -42,5 +42,7 @@ def test_chat_folder_sql_generation(tmp_path: Path):
         created_at=created_at,
         columns=None,
     )
-    assert "INSERT INTO \"main\".\"folder\"" in folder_sql
+    assert "INSERT OR IGNORE INTO \"main\".\"folder\"" in folder_sql
     assert "Project One" in folder_sql
+    assert "INSERT OR IGNORE" in folder_sql
+    assert "ON CONFLICT" not in folder_sql

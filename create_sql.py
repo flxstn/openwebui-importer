@@ -188,16 +188,26 @@ def build_folder_insert(
         include = [col for col in values.keys() if col in columns]
     cols = ",".join(f"\"{col}\"" for col in include)
     vals = ",".join(values[col] for col in include)
+    insert_stmt = (
+        "INSERT OR IGNORE INTO \"main\".\"folder\" "
+        f"({cols}) VALUES ({vals});"
+    )
     update_parts = []
     if "name" in include:
-        update_parts.append("\"name\"=excluded.\"name\"")
+        update_parts.append(f"\"name\"='{escape_sql_string(folder_name)}'")
     if "updated_at" in include:
-        update_parts.append("\"updated_at\"=excluded.\"updated_at\"")
-    update_clause = " DO UPDATE SET " + ",".join(update_parts) if update_parts else " DO NOTHING"
-    return (
-        "INSERT INTO \"main\".\"folder\" "
-        f"({cols}) VALUES ({vals}) ON CONFLICT(\"id\"){update_clause};"
+        update_parts.append(f"\"updated_at\"={created_at}")
+    if not update_parts:
+        return insert_stmt
+    where_parts = [f"\"id\"='{folder_id}'"]
+    if "user_id" in include:
+        where_parts.append(f"\"user_id\"='{user_id}'")
+    update_stmt = (
+        "UPDATE \"main\".\"folder\" "
+        f"SET {', '.join(update_parts)} "
+        f"WHERE {' AND '.join(where_parts)};"
     )
+    return f"{insert_stmt}\n{update_stmt}"
 
 
 def build_chat_insert(
