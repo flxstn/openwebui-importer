@@ -29,7 +29,7 @@ def slugify(value: str) -> str:
     return re.sub(r"-+", "-", value).strip("-")
 
 
-def tag_upserts(user_id: str, meta_tags: list[str]) -> list[str]:
+def tag_upserts(user_id: str, meta_tags: list[str], columns: set[str] | None) -> list[str]:
     """Return SQL statements to ensure tags exist for the user."""
     base_tags = [
         ("imported-grok", "imported-grok"),
@@ -44,13 +44,37 @@ def tag_upserts(user_id: str, meta_tags: list[str]) -> list[str]:
     for tag_id, name in base_tags:
         unique[tag_id] = name
 
+    values = {
+        "id": None,
+        "name": None,
+        "user_id": None,
+        "meta": "'null'",
+    }
+    if columns is None:
+        include = ["id", "name", "user_id", "meta"]
+    else:
+        include = [col for col in values.keys() if col in columns]
+
     stmts = []
     for tag_id, name in unique.items():
+        values["id"] = f"'{tag_id}'"
+        values["name"] = f"'{escape_sql_string(name)}'"
+        values["user_id"] = f"'{user_id}'"
+        cols = ",".join(f"\"{col}\"" for col in include)
+        vals = ",".join(values[col] for col in include)
         stmts.append(
-            'INSERT INTO "main"."tag" ("id","name","user_id","meta") '
-            f"VALUES ('{tag_id}','{name}','{user_id}','null') "
-            'ON CONFLICT("id","user_id") DO UPDATE SET "name"=excluded."name";'
+            "INSERT OR IGNORE INTO \"main\".\"tag\" "
+            f"({cols}) VALUES ({vals});"
         )
+        if "name" in include:
+            where_parts = [f"\"id\"='{tag_id}'"]
+            if "user_id" in include:
+                where_parts.append(f"\"user_id\"='{user_id}'")
+            stmts.append(
+                "UPDATE \"main\".\"tag\" "
+                f"SET \"name\"='{escape_sql_string(name)}' "
+                f"WHERE {' AND '.join(where_parts)};"
+            )
     return stmts
 
 def sanitize_folder_name(name: str | None) -> str:
@@ -322,8 +346,9 @@ def main() -> None:
             raise SystemExit(f"Failed to process {fpath}: {exc}")
 
     prefix = []
+    tag_columns = load_table_columns(args.schema_db, "tag")
     for uid in sorted(user_ids):
-        prefix.extend(tag_upserts(uid, sorted(tag_names)))
+        prefix.extend(tag_upserts(uid, sorted(tag_names), tag_columns))
 
     for (uid, folder_name), entry in sorted(folders.items()):
         folder_inserts.append(
