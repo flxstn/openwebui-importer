@@ -46,3 +46,14 @@ def test_chat_folder_sql_generation(tmp_path: Path):
     assert "Project One" in folder_sql
     assert "INSERT OR IGNORE" in folder_sql
     assert "ON CONFLICT" not in folder_sql
+
+    folder_sql_with_schema = create_sql.build_folder_insert(
+        folder_id=folder_id,
+        folder_name=folder_name,
+        user_id=user_id,
+        created_at=created_at,
+        columns={"id", "name", "user_id", "created_at", "updated_at", "meta", "parent_id", "is_expanded"},
+    )
+    assert "\"is_expanded\"" in folder_sql_with_schema
+    assert "is_expanded" in folder_sql_with_schema
+    assert "0" in folder_sql_with_schema

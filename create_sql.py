@@ -181,6 +181,9 @@ def build_folder_insert(
         "updated_at": str(created_at),
         "meta": "'null'",
         "parent_id": "NULL",
+        "items": "'null'",
+        "data": "'null'",
+        "is_expanded": "0",
     }
     if columns is None:
         include = ["id", "name", "user_id", "created_at", "updated_at", "meta", "parent_id"]
