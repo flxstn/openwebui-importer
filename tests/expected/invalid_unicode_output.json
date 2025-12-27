@@ -2,7 +2,7 @@
   "id": "",
   "title": "Invalid unicode test",
   "models": [
-    "openai/chatgpt-4o-latest"
+    "openai/GPT-5"
   ],
   "params": {},
   "history": {
@@ -17,7 +17,7 @@
         "content": "Hello",
         "timestamp": 1000,
         "models": [
-          "openai/chatgpt-4o-latest"
+          "openai/GPT-5"
         ]
       },
       "00000000-0000-0000-0000-000000000003": {
@@ -27,8 +27,8 @@
         "role": "assistant",
         "content": "World",
         "timestamp": 1000,
-        "model": "openai/chatgpt-4o-latest",
-        "modelName": "ChatGPT 4o (latest)",
+        "model": "openai/GPT-5",
+        "modelName": "OpenAI: GPT-5",
         "modelIdx": 0,
         "userContext": null,
         "lastSentence": "World",
@@ -53,7 +53,7 @@
       "content": "Hello",
       "timestamp": 1000,
       "models": [
-        "openai/chatgpt-4o-latest"
+        "openai/GPT-5"
       ]
     },
     {
@@ -63,8 +63,8 @@
       "role": "assistant",
       "content": "World",
       "timestamp": 1000,
-      "model": "openai/chatgpt-4o-latest",
-      "modelName": "ChatGPT 4o (latest)",
+      "model": "openai/GPT-5",
+      "modelName": "OpenAI: GPT-5",
       "modelIdx": 0,
       "userContext": null,
       "lastSentence": "World",
