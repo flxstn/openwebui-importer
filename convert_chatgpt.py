@@ -31,6 +31,7 @@ def extract_project_name(item: dict) -> str:
         item.get("workspace_name"),
         item.get("project"),
         item.get("workspace"),
+        item.get("conversation_template_id"),
     ]
     for candidate in candidates:
         if isinstance(candidate, str) and candidate.strip():
