@@ -8,6 +8,8 @@ creating a SQL script to import the JSON into the openweb-ui SQLite database.
 The imported chats are given the tags `imported-chatgpt`, `imported-claude` and `imported-grok`.
 
 Any private-use Unicode characters occasionally found in model exports are stripped from the message text during conversion.
+ChatGPT project/workspace names (when present) are normalized and written into the converted JSON as
+`meta.folder_name` so they can be imported as Open WebUI folders.
 
 *There were problems exporting chats from Gemini, so it's not currently supported. DeepSeek and others could be added without much effort.*
 
@@ -15,7 +17,7 @@ Any private-use Unicode characters occasionally found in model exports are strip
 
 ```
 python .\convert_chatgpt.py --userid="get-this-from-your-webui.db" .\chatgpt.json
-python .\create_sql.py ./output/chatgpt --tags="imported-chatgpt" --output=chatgpt.sql
+python .\create_sql.py ./output/chatgpt --tags="imported-chatgpt" --folder-tag-prefix="project:" --output=chatgpt.sql
 ```
 
 ## Quickstart Docker
@@ -27,7 +29,7 @@ docker run --rm -v $(pwd)/data:/data \
 
 docker run --rm -v $(pwd)/data:/data \
   ghcr.io/yetanotherchris/openwebui-importer:latest \
-  python create_sql.py /data/output/chatgpt --tags="imported-chatgpt" --output=/data/chatgpt.sql
+  python create_sql.py /data/output/chatgpt --tags="imported-chatgpt" --folder-tag-prefix="project:" --output=/data/chatgpt.sql
 ```
 
 ```powershell
@@ -37,7 +39,7 @@ docker run --rm -v ${PWD}/data:/data `
 
 docker run --rm -v ${PWD}/data:/data `
   ghcr.io/yetanotherchris/openwebui-importer:latest `
-  python create_sql.py /data/output/chatgpt --tags="imported-chatgpt" --output=/data/chatgpt.sql
+  python create_sql.py /data/output/chatgpt --tags="imported-chatgpt" --folder-tag-prefix="project:" --output=/data/chatgpt.sql
 ```
 
 Full example for GPT and Grok:
@@ -46,7 +48,7 @@ Full example for GPT and Grok:
 python .\convert_chatgpt.py --userid="example-9cef-4387-8ee4-b82eb2e1c637" .\chatgpt.json
 python .\convert_chatgpt.py --userid="example-9cef-4387-8ee4-b82eb2e1c637" .\chatgpt.json
 python .\convert_grok.py --userid="example-9cef-4387-8ee4-b82eb2e1c637" .\grok.json      
-python .\create_sql.py ./output/chatgpt --tags="imported-chatgpt" --output=chatgpt.sql
+python .\create_sql.py ./output/chatgpt --tags="imported-chatgpt" --folder-tag-prefix="project:" --output=chatgpt.sql
 python .\create_sql.py ./output/grok --tags="imported-grok" --output=grok.sql
 # Now run the scripts inside DB Browser and hit save
 ```
@@ -96,7 +98,9 @@ usage: create_sql.py [-h] [--tags TAGS] [--output OUTPUT] files [files ...]
 Create SQL inserts for open-webui chats. Existing chat records are deleted
 before inserting so they are replaced if already present. Tags are inserted
 with UPSERT statements, ensuring the default import tags (and any tags passed
-via `--tags`) exist for each user.
+via `--tags`) exist for each user. If ChatGPT project/workspace names are
+present (or a folder manifest is supplied), chats are assigned to folders and
+tagged with `project:<folder-name>` by default.
 
 positional arguments:
   files            Chat JSON files or directories
@@ -104,6 +108,10 @@ positional arguments:
 options:
   -h, --help       show this help message and exit
   --tags TAGS      Comma-separated tags for the meta field
+  --folders        Optional JSON manifest mapping chat IDs to folder names
+  --folder-tag-prefix
+                   Prefix for project tags
+  --schema-db      Path to a webui.db file for schema detection
   --output OUTPUT  Write SQL statements to this file
 ```
 
@@ -124,5 +132,14 @@ options:
    inserting new ones, while tags are inserted using UPSERTs so they are
    updated if they already exist. Any tags passed with `--tags` are also created
    for each user.
+5. Optional: if you want to map ChatGPT projects to Open WebUI folders, pass a
+   folder manifest and/or a schema database for column detection:
+   ```bash
+   python ./create_sql.py ./output/chatgpt \
+     --tags="imported-chatgpt" \
+     --folder-tag-prefix="project:" \
+     --schema-db=./webui.db \
+     --output=chatgpt.sql
+   ```
 5. Make a copy of your `webui.db` database.
 6. Execute the generated SQL using a tool such as [DB Browser for SQLite](https://sqlitebrowser.org/dl/). Ensure you save the database.

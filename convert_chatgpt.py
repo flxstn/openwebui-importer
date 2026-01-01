@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime
 
 INVALID_RE = re.compile(r"[\ue000-\uf8ff]")
+FOLDER_FALLBACK = "no-project"
 
 
 def sanitize_text(text: Any) -> str:
@@ -22,6 +23,39 @@ def sanitize_text(text: Any) -> str:
 MODEL = "openai/GPT-5"
 MODEL_NAME = "OpenAI: GPT-5"
 SUBDIR = "chatgpt"
+
+
+def extract_project_name(item: dict) -> str:
+    candidates = [
+        item.get("project_name"),
+        item.get("workspace_name"),
+        item.get("project"),
+        item.get("workspace"),
+        item.get("conversation_template_id"),
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate
+        if isinstance(candidate, dict):
+            name = candidate.get("name") or candidate.get("title")
+            if isinstance(name, str) and name.strip():
+                return name
+    metadata = item.get("metadata")
+    if isinstance(metadata, dict):
+        meta_name = metadata.get("project_name") or metadata.get("workspace_name")
+        if isinstance(meta_name, str) and meta_name.strip():
+            return meta_name
+    return ""
+
+
+def sanitize_folder_name(name: Any) -> str:
+    if not isinstance(name, str):
+        return FOLDER_FALLBACK
+    cleaned = sanitize_text(name)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return FOLDER_FALLBACK
+    return cleaned[:80]
 
 
 def extract_last_sentence(text: Any) -> str:
@@ -73,6 +107,8 @@ def parse_chatgpt(data: Any) -> List[dict]:
         ts_raw = item.get("create_time") or item.get("update_time") or time.time()
         ts = parse_timestamp(ts_raw, time.time())
         conv_id = item.get("conversation_id") or item.get("id")
+        project = extract_project_name(item)
+        folder_name = sanitize_folder_name(project) if project else FOLDER_FALLBACK
         messages: List[Tuple[str, str, float]] = []
         if isinstance(item.get("chat_messages"), list):
             for idx, msg in enumerate(item["chat_messages"]):
@@ -138,6 +174,7 @@ def parse_chatgpt(data: Any) -> List[dict]:
             "timestamp": ts,
             "messages": messages,
             "conversation_id": conv_id,
+            "folder_name": folder_name,
         })
     return result
 
@@ -208,17 +245,14 @@ def convert_file(path: str, user_id: str, outdir: str) -> None:
     os.makedirs(outdir, exist_ok=True)
     for conv in conversations:
         out, conv_uuid = build_webui(conv, user_id)
+        folder_name = conv.get("folder_name")
+        if folder_name:
+            out.setdefault("meta", {})["folder_name"] = folder_name
         conv_id = conv.get("conversation_id")
         unique = conv_id if conv_id else conv_uuid
         fname = f"{slugify(conv['title'])}_{unique}.json"
-        outer = {
-            "id": "",
-            "user_id": user_id,
-            "title": conv.get("title", ""),
-            "chat": out
-        }
         with open(os.path.join(outdir, fname), "w", encoding="utf-8") as fh:
-            json.dump([outer], fh, ensure_ascii=False, indent=2)
+            json.dump(out, fh, ensure_ascii=False, indent=2)
 
 
 def run_cli() -> None:
